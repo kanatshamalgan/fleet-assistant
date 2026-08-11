@@ -62,6 +62,13 @@
   .send-btn:disabled { opacity: 0.4; cursor: default; }
   #chatInput:disabled { opacity: 0.5; }
   .thinking { display: flex; align-items: center; gap: 6px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .form-grid input, .form-grid select { min-width: 0; }
+  select { flex: 1; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; }
+  .form-actions { display: flex; gap: 8px; margin-top: 10px; }
+  @media (max-width: 480px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -74,7 +81,10 @@
         <div class="subtitle" id="statusLine">не подключено</div>
       </div>
     </div>
-    <button class="refresh-btn" id="refreshBtn" style="display:none">↻ обновить</button>
+    <div style="display:flex; gap:8px;">
+      <button class="refresh-btn" id="addDriverBtn" style="display:none">＋ водитель</button>
+      <button class="refresh-btn" id="refreshBtn" style="display:none">↻ обновить</button>
+    </div>
   </div>
 
   <div class="summary-strip" id="summaryStrip">
@@ -91,6 +101,35 @@
       <button class="btn-amber" id="connectBtn">⚡ Подключить</button>
     </div>
     <div class="conn-error" id="connError"></div>
+  </div>
+
+  <div class="conn-box" id="addDriverBox" style="display:none">
+    <div class="conn-label">Новый водитель</div>
+    <div class="form-grid">
+      <input type="text" id="drvLastName" placeholder="Фамилия*" />
+      <input type="text" id="drvFirstName" placeholder="Имя*" />
+      <input type="text" id="drvMiddleName" placeholder="Отчество" />
+      <input type="text" id="drvPhone" placeholder="Телефон" />
+      <select id="drvHiringType">
+        <option value="commercial">Обычный</option>
+        <option value="selfemployed_park">Парковый самозанятый</option>
+      </select>
+      <input type="text" id="drvLicenseNumber" placeholder="№ водительского удостоверения" />
+      <input type="date" id="drvLicenseExpiry" placeholder="Срок действия ВУ" />
+    </div>
+    <div class="conn-label" style="margin-top:12px">Автомобиль</div>
+    <div class="form-grid">
+      <input type="text" id="carBrand" placeholder="Марка" />
+      <input type="text" id="carModel" placeholder="Модель" />
+      <input type="text" id="carNumber" placeholder="Гос. номер*" />
+      <input type="text" id="carColor" placeholder="Цвет" />
+      <input type="text" id="carVin" placeholder="VIN" />
+    </div>
+    <div class="form-actions">
+      <button class="btn-amber" id="createDriverBtn">✚ Создать</button>
+      <button class="refresh-btn" id="cancelAddDriverBtn">Отмена</button>
+    </div>
+    <div class="conn-error" id="addDriverError"></div>
   </div>
 
   <div class="messages" id="messages"></div>
@@ -176,6 +215,7 @@ async function connect() {
     updateSummary(data.summary);
     el('connBox').style.display = 'none';
     el('refreshBtn').style.display = 'flex';
+    el('addDriverBtn').style.display = 'flex';
     el('statusLine').textContent = `подключено · ${data.summary.total} водителей`;
     el('chatInput').disabled = false;
     el('chatInput').placeholder = 'Спросите про водителей…';
@@ -244,6 +284,75 @@ async function send(text) {
   }
 }
 
+function toggleAddDriverBox() {
+  const box = el('addDriverBox');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  el('addDriverError').style.display = 'none';
+}
+
+async function createDriver() {
+  const payload = {
+    driver: {
+      lastName: el('drvLastName').value.trim(),
+      firstName: el('drvFirstName').value.trim(),
+      middleName: el('drvMiddleName').value.trim(),
+      phone: el('drvPhone').value.trim(),
+      hiringType: el('drvHiringType').value,
+      license: {
+        number: el('drvLicenseNumber').value.trim(),
+        expiryDate: el('drvLicenseExpiry').value,
+      },
+    },
+    car: {
+      brand: el('carBrand').value.trim(),
+      model: el('carModel').value.trim(),
+      number: el('carNumber').value.trim(),
+      color: el('carColor').value.trim(),
+      vin: el('carVin').value.trim(),
+    },
+  };
+
+  if (!payload.driver.lastName || !payload.driver.firstName) {
+    el('addDriverError').textContent = 'Укажите фамилию и имя водителя';
+    el('addDriverError').style.display = 'block';
+    return;
+  }
+  if (!payload.car.number) {
+    el('addDriverError').textContent = 'Укажите гос. номер автомобиля';
+    el('addDriverError').style.display = 'block';
+    return;
+  }
+  el('addDriverError').style.display = 'none';
+  el('createDriverBtn').disabled = true;
+  el('createDriverBtn').textContent = '⏳ Отправляю…';
+  try {
+    const res = await fetch(backendUrl + '/api/drivers/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.notImplemented) {
+      addMessage('assistant', `⚠ ${data.error}`);
+    } else if (!res.ok) {
+      el('addDriverError').textContent = data.error || 'Не удалось создать водителя';
+      el('addDriverError').style.display = 'block';
+    } else {
+      addMessage('assistant', `Водитель ${payload.driver.lastName} ${payload.driver.firstName} создан и машина ${payload.car.number} прикреплена.`);
+      toggleAddDriverBox();
+    }
+  } catch (e) {
+    el('addDriverError').textContent = e.message;
+    el('addDriverError').style.display = 'block';
+  } finally {
+    el('createDriverBtn').disabled = false;
+    el('createDriverBtn').textContent = '✚ Создать';
+  }
+}
+
+el('addDriverBtn').addEventListener('click', toggleAddDriverBox);
+el('cancelAddDriverBtn').addEventListener('click', toggleAddDriverBox);
+el('createDriverBtn').addEventListener('click', createDriver);
 el('connectBtn').addEventListener('click', connect);
 el('refreshBtn').addEventListener('click', refresh);
 el('sendBtn').addEventListener('click', () => send());

@@ -74,6 +74,29 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+// Создание водителя + прикрепление автомобиля. Пока НЕ пишет в Yandex Fleet —
+// точная схема запроса (v2/parks/contractors/driver-profile + v2/parks/vehicles/car)
+// уточняется. Эндпоинт валидирует форму и возвращает notImplemented, чтобы
+// фронтенд мог собирать и показывать данные уже сейчас.
+app.post("/api/drivers/create", (req, res) => {
+  const { driver, car } = req.body || {};
+  if (!driver || !driver.lastName || !driver.firstName) {
+    return res.status(400).json({ ok: false, error: "Нужны фамилия и имя водителя" });
+  }
+  if (!car || !car.number) {
+    return res.status(400).json({ ok: false, error: "Нужен гос. номер автомобиля" });
+  }
+  res.status(501).json({
+    ok: false,
+    notImplemented: true,
+    error:
+      "Создание водителей и машин через Yandex Fleet API пока не подключено — " +
+      "нужна точная схема запроса из документации Yandex. Форма готова, " +
+      "интеграция появится, когда схема будет уточнена.",
+    received: { driver, car },
+  });
+});
+
 // Отладка: сырой ответ по одному водителю — используйте, чтобы найти
 // точные названия полей документов для rules.config.js
 app.get("/api/debug/raw-driver", async (req, res) => {
