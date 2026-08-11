@@ -130,6 +130,24 @@ app.get("/api/debug/raw-car", async (req, res) => {
   }
 });
 
+// Временная отладка: полные сырые профили водителей по фамилии — используем,
+// чтобы проверить created_date и понять, не создались ли тестовые записи
+// в реальном парке несмотря на видимые ошибки при создании.
+app.get("/api/debug/find-driver", async (req, res) => {
+  try {
+    const q = (req.query.name || "").toLowerCase();
+    const raw = await fetchAllDriverProfiles();
+    const matches = raw.filter((d) => {
+      const dp = d.driver_profile || {};
+      const full = [dp.last_name, dp.first_name, dp.middle_name].filter(Boolean).join(" ").toLowerCase();
+      return full.includes(q);
+    });
+    res.json(matches);
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Fleet assistant backend запущен на порту ${PORT}`);
