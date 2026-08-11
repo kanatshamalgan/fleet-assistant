@@ -1,1 +1,257 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fleet Assistant</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+  :root {
+    --bg: #0A0F1C; --panel: #0F1626; --panel-2: #141C30;
+    --line: #232D45; --text: #E7EAF2; --text-muted: #8B93AC;
+    --text-dim: #5B6480; --ok: #3ED6C5; --amber: #F5A623; --danger: #E8544F;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex; justify-content: center; padding: 20px;
+    min-height: 100vh;
+  }
+  #app { width: 100%; max-width: 640px; display: flex; flex-direction: column; height: 92vh; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .header-left { display: flex; align-items: center; gap: 9px; }
+  .logo { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--amber), #C9791C); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; }
+  .subtitle { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); }
+  .refresh-btn { display: flex; align-items: center; gap: 5px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 7px 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 10.5px; cursor: pointer; }
+  .summary-strip { display: none; gap: 10px; margin-bottom: 12px; }
+  .summary-strip.show { display: flex; }
+  .summary-box { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; text-align: center; }
+  .summary-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 18px; }
+  .summary-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-dim); text-transform: uppercase; }
+  .warn-banner { display: none; align-items: center; gap: 6px; margin-bottom: 12px; padding: 8px 10px; background: rgba(245,166,35,0.08); border: 1px solid var(--amber); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--amber); }
+  .warn-banner.show { display: flex; }
+  .conn-box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+  .conn-label { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; }
+  .conn-row { display: flex; gap: 8px; }
+  input[type=text] { flex: 1; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; }
+  .btn-amber { display: flex; align-items: center; gap: 6px; background: var(--amber); border: none; border-radius: 8px; padding: 9px 14px; color: #1a1206; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+  .btn-amber:disabled { opacity: 0.6; cursor: default; }
+  .conn-error { display: none; margin-top: 8px; color: var(--danger); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; padding-right: 2px; }
+  .msg { max-width: 88%; }
+  .msg.user { align-self: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+  .bubble { border-radius: 12px; padding: 9px 12px; font-size: 13px; line-height: 1.4; }
+  .msg.user .bubble { background: var(--amber); color: #1a1206; font-weight: 600; }
+  .msg.assistant .bubble { background: var(--panel); border: 1px solid var(--line); }
+  .driver-card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 6px; }
+  .driver-top { display: flex; justify-content: space-between; align-items: center; }
+  .driver-name { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+  .status-pill { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 7px; border-radius: 20px; }
+  .status-working { background: rgba(62,214,197,0.12); color: var(--ok); }
+  .status-other { background: rgba(232,84,79,0.12); color: var(--danger); }
+  .driver-meta { display: flex; gap: 12px; margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); }
+  .problems { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .problem-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.04); border: 1px solid var(--line); }
+  .suggestions { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .suggestion { background: var(--panel-2); border: 1px solid var(--line); border-radius: 20px; padding: 5px 11px; color: var(--text-muted); font-size: 11px; cursor: pointer; }
+  .input-row { display: flex; gap: 8px; }
+  .send-btn { background: var(--amber); border: none; border-radius: 9px; width: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
+  .send-btn:disabled { opacity: 0.4; cursor: default; }
+  #chatInput:disabled { opacity: 0.5; }
+  .thinking { display: flex; align-items: center; gap: 6px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">📻</div>
+      <div>
+        <div class="title">FLEET ASSISTANT</div>
+        <div class="subtitle" id="statusLine">не подключено</div>
+      </div>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" style="display:none">↻ обновить</button>
+  </div>
+
+  <div class="summary-strip" id="summaryStrip">
+    <div class="summary-box"><div class="summary-val" id="sumTotal">0</div><div class="summary-label">всего</div></div>
+    <div class="summary-box"><div class="summary-val" id="sumProblems" style="color:var(--danger)">0</div><div class="summary-label">проблем</div></div>
+    <div class="summary-box"><div class="summary-val" id="sumClean" style="color:var(--ok)">0</div><div class="summary-label">чисто</div></div>
+  </div>
+  <div class="warn-banner" id="docWarn">⚠ Проверка документов не настроена (см. rules.config.js на бэкенде)</div>
+
+  <div class="conn-box" id="connBox">
+    <div class="conn-label">Backend уже здесь — просто нажми подключить</div>
+    <div class="conn-row">
+      <input type="text" id="backendUrl" placeholder="адрес backend-сервера" />
+      <button class="btn-amber" id="connectBtn">⚡ Подключить</button>
+    </div>
+    <div class="conn-error" id="connError"></div>
+  </div>
+
+  <div class="messages" id="messages"></div>
+
+  <div class="suggestions" id="suggestions" style="display:none"></div>
+
+  <div class="input-row">
+    <input type="text" id="chatInput" placeholder="Сначала подключите бэкенд" disabled />
+    <button class="send-btn" id="sendBtn" disabled>➤</button>
+  </div>
+</div>
+
+<script>
+const SUGGESTIONS = ["Кто не подписал документы?", "Кто не выходил на линию?", "Покажи все проблемы", "Сводка по парку"];
+let backendUrl = window.location.origin; // сервер и чат теперь на одном адресе
+let connected = false;
+
+const el = (id) => document.getElementById(id);
+el('backendUrl').value = backendUrl;
+
+function addMessage(role, text, drivers) {
+  const msgs = el('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+
+  if (drivers && drivers.length) {
+    drivers.slice(0, 15).forEach(d => {
+      const card = document.createElement('div');
+      card.className = 'driver-card';
+      const working = d.workStatus === 'working';
+      card.innerHTML = `
+        <div class="driver-top">
+          <div class="driver-name">👤 ${d.name}</div>
+          <span class="status-pill ${working ? 'status-working' : 'status-other'}">${working ? 'на линии' : d.workStatus}</span>
+        </div>
+        <div class="driver-meta">
+          ${d.phone ? `<span>📞 ${d.phone}</span>` : ''}
+          ${d.car ? `<span>🚗 ${d.car}</span>` : ''}
+        </div>
+        ${d.problems && d.problems.length ? `<div class="problems">${d.problems.map(p => `<span class="problem-tag">${p.label}</span>`).join('')}</div>` : ''}
+      `;
+      wrap.appendChild(card);
+    });
+  }
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function setThinking(on) {
+  let t = el('thinkingRow');
+  if (on) {
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'thinkingRow';
+      t.className = 'thinking';
+      t.textContent = '⏳ обрабатываю…';
+      el('messages').appendChild(t);
+      el('messages').scrollTop = el('messages').scrollHeight;
+    }
+  } else if (t) {
+    t.remove();
+  }
+}
+
+async function connect() {
+  const url = el('backendUrl').value.replace(/\/$/, '');
+  el('connectBtn').disabled = true;
+  el('connectBtn').textContent = '⏳ Подключаю…';
+  el('connError').style.display = 'none';
+  try {
+    const health = await fetch(url + '/api/health');
+    if (!health.ok) throw new Error('Сервер ответил ошибкой');
+    const res = await fetch(url + '/api/drivers');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Не удалось получить данные');
+
+    backendUrl = url;
+    connected = true;
+    updateSummary(data.summary);
+    el('connBox').style.display = 'none';
+    el('refreshBtn').style.display = 'flex';
+    el('statusLine').textContent = `подключено · ${data.summary.total} водителей`;
+    el('chatInput').disabled = false;
+    el('chatInput').placeholder = 'Спросите про водителей…';
+    el('sendBtn').disabled = false;
+    el('suggestions').style.display = 'flex';
+    SUGGESTIONS.forEach(s => {
+      const b = document.createElement('button');
+      b.className = 'suggestion';
+      b.textContent = s + ' ›';
+      b.onclick = () => send(s);
+      el('suggestions').appendChild(b);
+    });
+    addMessage('assistant', `Подключился. В парке ${data.summary.total} водителей, из них с проблемами — ${data.summary.withProblems}. Спрашивайте.`);
+  } catch (e) {
+    el('connError').textContent = '📡 ' + e.message;
+    el('connError').style.display = 'block';
+  } finally {
+    el('connectBtn').disabled = false;
+    el('connectBtn').textContent = '⚡ Подключить';
+  }
+}
+
+function updateSummary(summary) {
+  el('summaryStrip').classList.add('show');
+  el('sumTotal').textContent = summary.total;
+  el('sumProblems').textContent = summary.withProblems;
+  el('sumClean').textContent = summary.clean;
+  el('docWarn').classList.toggle('show', !summary.documentsConfigured);
+}
+
+async function refresh() {
+  if (!connected) return;
+  setThinking(true);
+  try {
+    await fetch(backendUrl + '/api/drivers/refresh', { method: 'POST' });
+    const res = await fetch(backendUrl + '/api/drivers');
+    const data = await res.json();
+    updateSummary(data.summary);
+    addMessage('assistant', 'Данные обновлены из Yandex Fleet API.');
+  } catch (e) {
+    addMessage('assistant', 'Не удалось обновить: ' + e.message);
+  } finally {
+    setThinking(false);
+  }
+}
+
+async function send(text) {
+  const question = (text ?? el('chatInput').value).trim();
+  if (!question || !connected) return;
+  addMessage('user', question);
+  el('chatInput').value = '';
+  setThinking(true);
+  try {
+    const res = await fetch(backendUrl + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Ошибка запроса');
+    setThinking(false);
+    addMessage('assistant', `${data.label} — найдено: ${data.count}`, data.drivers);
+  } catch (e) {
+    setThinking(false);
+    addMessage('assistant', '⚠ Ошибка: ' + e.message);
+  }
+}
+
+el('connectBtn').addEventListener('click', connect);
+el('refreshBtn').addEventListener('click', refresh);
+el('sendBtn').addEventListener('click', () => send());
+el('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
+el('backendUrl').addEventListener('keydown', (e) => { if (e.key === 'Enter') connect(); });
+
+addMessage('assistant', 'Привет! Нажмите «Подключить», и я помогу разобраться, у кого из водителей проблемы — документы, неактивность, баланс.');
+</script>
+</body>
+</html>
 
