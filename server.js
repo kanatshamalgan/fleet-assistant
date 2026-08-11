@@ -8,6 +8,7 @@ const { answerQuestion } = require("./lib/chat");
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(require("path").join(__dirname, "public")));
 
 const CACHE_MS = (Number(process.env.CACHE_MINUTES) || 10) * 60 * 1000;
 let cache = { data: null, fetchedAt: 0, error: null };
