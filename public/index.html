@@ -109,21 +109,18 @@
       <input type="text" id="drvLastName" placeholder="Фамилия*" />
       <input type="text" id="drvFirstName" placeholder="Имя*" />
       <input type="text" id="drvMiddleName" placeholder="Отчество" />
-      <input type="text" id="drvPhone" placeholder="Телефон" />
-      <select id="drvHiringType">
-        <option value="commercial">Обычный</option>
-        <option value="selfemployed_park">Парковый самозанятый</option>
-      </select>
-      <input type="text" id="drvLicenseNumber" placeholder="№ водительского удостоверения" />
-      <input type="date" id="drvLicenseExpiry" placeholder="Срок действия ВУ" />
+      <input type="text" id="drvPhone" placeholder="Телефон*" />
+      <input type="text" id="drvLicenseNumber" placeholder="Серия и номер ВУ*" />
+      <input type="date" id="drvLicenseIssue" placeholder="Дата выдачи ВУ" />
+      <input type="date" id="drvLicenseExpiry" placeholder="Действует до" />
     </div>
     <div class="conn-label" style="margin-top:12px">Автомобиль</div>
     <div class="form-grid">
-      <input type="text" id="carBrand" placeholder="Марка" />
-      <input type="text" id="carModel" placeholder="Модель" />
-      <input type="text" id="carNumber" placeholder="Гос. номер*" />
+      <input type="text" id="carBrand" placeholder="Марка*" />
+      <input type="text" id="carModel" placeholder="Модель*" />
       <input type="text" id="carColor" placeholder="Цвет" />
-      <input type="text" id="carVin" placeholder="VIN" />
+      <input type="text" id="carYear" placeholder="Год" />
+      <input type="text" id="carNumber" placeholder="Гос. номер*" />
     </div>
     <div class="form-actions">
       <button class="btn-amber" id="createDriverBtn">✚ Создать</button>
@@ -297,28 +294,28 @@ async function createDriver() {
       firstName: el('drvFirstName').value.trim(),
       middleName: el('drvMiddleName').value.trim(),
       phone: el('drvPhone').value.trim(),
-      hiringType: el('drvHiringType').value,
       license: {
         number: el('drvLicenseNumber').value.trim(),
+        issueDate: el('drvLicenseIssue').value,
         expiryDate: el('drvLicenseExpiry').value,
       },
     },
     car: {
       brand: el('carBrand').value.trim(),
       model: el('carModel').value.trim(),
-      number: el('carNumber').value.trim(),
       color: el('carColor').value.trim(),
-      vin: el('carVin').value.trim(),
+      year: el('carYear').value.trim(),
+      number: el('carNumber').value.trim(),
     },
   };
 
-  if (!payload.driver.lastName || !payload.driver.firstName) {
-    el('addDriverError').textContent = 'Укажите фамилию и имя водителя';
+  if (!payload.driver.lastName || !payload.driver.firstName || !payload.driver.phone || !payload.driver.license.number) {
+    el('addDriverError').textContent = 'Укажите фамилию, имя, телефон и серию/номер ВУ';
     el('addDriverError').style.display = 'block';
     return;
   }
-  if (!payload.car.number) {
-    el('addDriverError').textContent = 'Укажите гос. номер автомобиля';
+  if (!payload.car.brand || !payload.car.model || !payload.car.number) {
+    el('addDriverError').textContent = 'Укажите марку, модель и гос. номер автомобиля';
     el('addDriverError').style.display = 'block';
     return;
   }

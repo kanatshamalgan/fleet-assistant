@@ -109,6 +109,18 @@ app.get("/api/debug/raw-driver", async (req, res) => {
   }
 });
 
+// Отладка: сырой ответ по одной машине — используем, чтобы сверить точные
+// названия полей (марка/модель/цвет/год) перед подключением создания машин.
+app.get("/api/debug/raw-car", async (req, res) => {
+  try {
+    const { fetchAllCars } = require("./lib/yandexClient");
+    const cars = await fetchAllCars();
+    res.json(cars[0] || { note: "Список пуст" });
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Fleet assistant backend запущен на порту ${PORT}`);
